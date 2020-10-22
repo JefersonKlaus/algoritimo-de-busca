@@ -153,28 +153,30 @@ class Labirinto:
 
     def faz_busca_em_largura(self,
                              labirinto=None,
-                             posicao_x=None,
-                             posicao_y=None,
-                             resultado_possivel=[],
+                             no=None,
+                             caminho_percorrido=[],
                              print_map=False):
         """
         faz busca em largura e imprime o passo a passo
-        :param resultado_possivel:
+        :param caminho_percorrido:
         :param print_map:
         :param labirinto:
-        :param posicao_x:
-        :param posicao_y:
+        :param no:
         :return:
         """
 
+        _no_atual = None
         _temp_labirinto = deepcopy(self.labirinto) if labirinto is None else labirinto
-        _posicao_x = self.posicao_atual.x if posicao_x is None else posicao_x
-        _posicao_y = self.posicao_atual.y if posicao_y is None else posicao_y
 
-        if _posicao_x < 0 or _posicao_x >= self.dim_x:
+        if no is None:
+            _no_atual = No(posicao=self.posicao_atual, saida=self.posicao_saida)
+        else:
+            _no_atual = no
+
+        if _no_atual.posicao.x < 0 or _no_atual.posicao.x >= self.dim_x:
             return False
 
-        if _posicao_y < 0 or _posicao_y >= self.dim_y:
+        if _no_atual.posicao.y < 0 or _no_atual.posicao.y >= self.dim_y:
             return False
 
         if print_map:
@@ -183,32 +185,57 @@ class Labirinto:
             self.desenha_labirinto(labirinto=_temp_labirinto)
 
         # obsatculo
-        if int(_temp_labirinto[_posicao_x][_posicao_y]) == 1:
+        if int(_temp_labirinto[_no_atual.posicao.x][_no_atual.posicao.y]) == 1:
             return False
 
         # ja passou por aqui
-        if int(_temp_labirinto[_posicao_x][_posicao_y]) == 8:
+        if int(_temp_labirinto[_no_atual.posicao.x][_no_atual.posicao.y]) == 8:
             return False
 
         # achou a saida
-        if int(_temp_labirinto[_posicao_x][_posicao_y]) == 3:
-            resultado_possivel.append([_posicao_x, _posicao_y])
-            return resultado_possivel
+        if int(_temp_labirinto[_no_atual.posicao.x][_no_atual.posicao.y]) == 3:
+            caminho_percorrido.append([_no_atual.posicao.x, _no_atual.posicao.y])
+            return _no_atual.pega_caminho()
             # return True
 
         # espaco posicao inicial apenas para colocar no array de solucao
-        if int(_temp_labirinto[_posicao_x][_posicao_y]) == 2:
-            resultado_possivel.append([_posicao_x, _posicao_y])
+        if int(_temp_labirinto[_no_atual.posicao.x][_no_atual.posicao.y]) == 2:
+            print(caminho_percorrido)
+            caminho_percorrido.append([_no_atual.posicao.x, _no_atual.posicao.y])
 
         # espaco livre
-        if int(_temp_labirinto[_posicao_x][_posicao_y]) != 2:
-            _temp_labirinto[_posicao_x][_posicao_y] = 8
-            resultado_possivel.append([_posicao_x, _posicao_y])
+        if int(_temp_labirinto[_no_atual.posicao.x][_no_atual.posicao.y]) != 2:
+            _temp_labirinto[_no_atual.posicao.x][_no_atual.posicao.y] = 8
+            caminho_percorrido.append([_no_atual.posicao.x, _no_atual.posicao.y])
 
-        found = self.faz_busca_em_largura(_temp_labirinto, _posicao_x - 1, _posicao_y, resultado_possivel, print_map) or \
-                self.faz_busca_em_largura(_temp_labirinto, _posicao_x + 1, _posicao_y, resultado_possivel, print_map) or \
-                self.faz_busca_em_largura(_temp_labirinto, _posicao_x, _posicao_y - 1, resultado_possivel, print_map) or \
-                self.faz_busca_em_largura(_temp_labirinto, _posicao_x, _posicao_y + 1, resultado_possivel, print_map)
+        found = self.faz_busca_em_largura(_temp_labirinto,
+                                          No(
+                                              pai=_no_atual,
+                                              posicao=Posicao(x=_no_atual.posicao.x - 1, y=_no_atual.posicao.y),
+                                              saida=self.posicao_saida),
+                                          caminho_percorrido,
+                                          print_map) or \
+                self.faz_busca_em_largura(_temp_labirinto,
+                                          No(
+                                              pai=_no_atual,
+                                              posicao=Posicao(x=_no_atual.posicao.x + 1, y=_no_atual.posicao.y),
+                                              saida=self.posicao_saida),
+                                          caminho_percorrido,
+                                          print_map) or \
+                self.faz_busca_em_largura(_temp_labirinto,
+                                          No(
+                                              pai=_no_atual,
+                                              posicao=Posicao(x=_no_atual.posicao.x, y=_no_atual.posicao.y - 1),
+                                              saida=self.posicao_saida),
+                                          caminho_percorrido,
+                                          print_map) or \
+                self.faz_busca_em_largura(_temp_labirinto,
+                                          No(
+                                              pai=_no_atual,
+                                              posicao=Posicao(x=_no_atual.posicao.x, y=_no_atual.posicao.y + 1),
+                                              saida=self.posicao_saida),
+                                          caminho_percorrido,
+                                          print_map)
 
         return found
 
@@ -228,7 +255,8 @@ class Labirinto:
                 if no_em_aberto == No(posicao=self.posicao_saida):
                     # return abertos
                     fechados.append(no_em_aberto)
-                    return fechados[-1].pega_caminho()
+                    # return fechados[-1].pega_caminho()
+                    return no_em_aberto.pega_caminho()
                 else:
                     # busca vizinhos/filhos retorna posicao da matriz deles
                     _filhos_do_no = self.__pega_vizinhos(
@@ -265,8 +293,6 @@ class Labirinto:
                     fechados.append(no_em_aberto)
                     abertos.sort()
 
-        print('falhou')
-
     @staticmethod
     def __criar_obstaculo(taxa=0.3):
         _random = random.random()
@@ -300,7 +326,7 @@ class No:
                 _pai = _pai.pai
 
         if saida:
-            self.v_heuristico = (self.posicao.x ** 2) + (self.posicao.y ** 2) ** (1/2)
+            self.v_heuristico = (self.posicao.x ** 2) + (self.posicao.y ** 2) ** (1 / 2)
 
     def __eq__(self, other):
         return self.posicao.x == other.posicao.x and self.posicao.y == other.posicao.y
@@ -331,7 +357,7 @@ class No:
         _caminho = [self]
         _pai = self.pai
         while _pai:
-            _caminho.append(_pai)
+            _caminho.insert(0, _pai)  # inserio no inicio da lista para ficar na posicao correta
             _pai = _pai.pai
         return _caminho
 
@@ -359,9 +385,7 @@ if __name__ == '__main__':
         taxa_obstaculos=.2
     )
     # lab.imprimir_labirinto()
-
     lab.desenha_labirinto()
 
-    # print(lab.nos)
-    # print(lab.faz_busca_em_largura(print_map=True))
-    print(lab.faz_busca_com_informacao())
+    print(lab.faz_busca_em_largura(print_map=True))
+    # print(lab.faz_busca_com_informacao())
